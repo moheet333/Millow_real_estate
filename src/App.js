@@ -16,13 +16,48 @@ const getEthereumObject = () => window.ethereum;
 
 function App() {
   const [account, setAccount] = useState(null);
-  const findMetaMaskAccount = async () => {
+  const [provider, setProvider] = useState(null);
+  const [escrow, setEscrow] = useState(null);
+  const [homes, setHomes] = useState([]);
+  const [home, setHome] = useState({});
+  const [toggle, setToggle] = useState(false);
+
+  const getBlockChainData = async () => {
     try {
       const ethereum = getEthereumObject();
       if (!ethereum) {
         console.log("Make sure you have Metamask installed");
         return null;
       }
+      const provider = new ethers.providers.Web3Provider(ethereum);
+      setProvider(provider);
+      const network = await provider.getNetwork();
+
+      console.log(config[network.chainId].escrow.address);
+      console.log(config[network.chainId].realEstate.address);
+
+      const realEstate = new ethers.Contract(
+        config[network.chainId].realEstate.address,
+        RealEstate,
+        provider
+      );
+      const escrow = new ethers.Contract(
+        config[network.chainId].escrow.address,
+        Escrow,
+        provider
+      );
+      setEscrow(escrow);
+
+      const totalSupply = await realEstate.totalSupply();
+      const homes = [];
+      for (var i = 1; i <= totalSupply; i++) {
+        const uri = await realEstate.tokenURI(i);
+        const response = await fetch(uri);
+        const metadata = await response.json();
+        homes.push(metadata);
+      }
+      setHomes(homes);
+      console.log(homes);
       console.log("We have ethereum object: ", ethereum);
       const accounts = await ethereum.request({ method: "eth_accounts" });
       ethereum.on("accountsChanged", async () => {
@@ -48,7 +83,7 @@ function App() {
 
   useEffect(() => {
     async function loadData() {
-      const account = await findMetaMaskAccount();
+      const account = await getBlockChainData();
       if (account !== null) {
         setAccount(account);
       }
@@ -57,10 +92,50 @@ function App() {
     loadData();
   }, []);
 
+  const togglePop = (home) => {
+    setHome(home);
+    toggle ? setToggle(false) : setToggle(true);
+  };
+
   return (
     <div>
       <Navigation account={account} setAccount={setAccount} />
-      <div className="cards__section"></div>
+      <Search />
+      <div className="cards__section">
+        <h3>Homes for you</h3>
+        <hr />
+        <div className="cards">
+          {homes.length > 0 ? (
+            homes.map((home, index) => (
+              <div className="card" key={index} onClick={() => togglePop(home)}>
+                <div className="card__image">
+                  <img alt="Home" src={home.image}></img>
+                </div>
+                <div className="card__info">
+                  <h4>{home.attributes[0].value} MATIC</h4>
+                  <p>
+                    <strong>{home.attributes[2].value}</strong> bds |
+                    <strong>{home.attributes[3].value}</strong> ba |
+                    <strong>{home.attributes[4].value}</strong> sqft
+                  </p>
+                  <p>{home.address}</p>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p>is loading...</p>
+          )}
+        </div>
+      </div>
+      {toggle && (
+        <Home
+          home={home}
+          provider={provider}
+          account={account}
+          escrow={escrow}
+          togglePop={togglePop}
+        />
+      )}
     </div>
   );
 }
