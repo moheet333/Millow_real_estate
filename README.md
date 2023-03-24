@@ -30,7 +30,7 @@ In a separate terminal execute:
 ### 7. Start frontend
 `$ npm run start`
 
-### Description.
+## Description.
 
 Our app is built on the Ethereum blockchain, utilizing the programming language Solidity and development environment Hardhat. By using blockchain technology, we are able to ensure the security and transparency of all transactions. Every transaction is recorded on the blockchain, making it tamper-proof and easily accessible for all parties involved.
 
